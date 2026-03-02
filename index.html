@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Seminar Registration</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+    <div class="page-wrapper">
+
+        <!-- ===== HEADER ===== -->
+        <header>
+            <h1>📋 Seminar Registration</h1>
+            <p>Fill in the details below to register for a seminar.</p>
+        </header>
+
+        <!-- ===== REGISTRATION FORM ===== -->
+        <section class="card">
+            <h2>Register Here</h2>
+
+            <div id="status-message"></div>
+
+            <div class="form-grid">
+
+                <div class="form-group">
+                    <label for="usn">USN</label>
+                    <input type="text" id="usn" placeholder="e.g. 1XX21CS001" />
+                </div>
+
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" placeholder="e.g. Rahul Sharma" />
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="e.g. rahul@email.com" />
+                </div>
+
+                <div class="form-group">
+                    <label for="cell">Cell Number</label>
+                    <input type="tel" id="cell" placeholder="e.g. 9876543210" />
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="seminar">Title of Seminar</label>
+                    <input type="text" id="seminar" placeholder="e.g. Introduction to Machine Learning" />
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Area</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="area" value="Security" /> Security
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="area" value="ML" /> ML
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="area" value="SDGs" /> SDGs
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+
+            <button id="submit-btn" onclick="submitForm()">Submit Registration</button>
+        </section>
+
+        <!-- ===== DATA TABLE ===== -->
+        <section class="card">
+            <div class="table-header">
+                <h2>Registered Students</h2>
+                <button id="refresh-btn" onclick="loadData()">🔄 Refresh</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>USN</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Cell No.</th>
+                            <th>Seminar Title</th>
+                            <th>Area</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr>
+                            <td colspan="7" class="empty-state">
+                                Connect to Google Sheets to see data here.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+    // ============================================================
+    //  YOUR GOOGLE APPS SCRIPT URL — This is YOUR unique address
+    // ============================================================
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwfszXNTt0tlYMLCXq79OZW5-CKNDmJ1-LSIO_cThHi2ZdpO6rRTUtNDQ0qh5fiea9C/exec";
+    // 🔐 Must match exactly what you set in Apps Script
+const API_KEY = "seminar_secret_key_2024_xK9mP";
+
+    // ============================================================
+    //  SUBMIT FORM — Sends form data to Google Sheets
+    // ============================================================
+    function submitForm() {
+
+        // --- Step 1: Grab what the user typed into each field ---
+        const usn     = document.getElementById("usn").value.trim();
+        const name    = document.getElementById("name").value.trim();
+        const email   = document.getElementById("email").value.trim();
+        const cell    = document.getElementById("cell").value.trim();
+        const seminar = document.getElementById("seminar").value.trim();
+
+        // Radio buttons need special handling — find whichever one is selected
+        const areaInput = document.querySelector('input[name="area"]:checked');
+        const area = areaInput ? areaInput.value : "";
+
+        // --- Step 2: Make sure no field is left empty ---
+        if (!usn || !name || !email || !cell || !seminar || !area) {
+            showStatus("⚠️ Please fill in all fields and select an Area.", "error");
+            return; // Stop here — don't submit incomplete form
+        }
+
+        // --- Step 3: Disable the button & show a loading message ---
+        const btn = document.getElementById("submit-btn");
+        btn.disabled = true;
+        btn.textContent = "Submitting...";
+        showStatus("", ""); // Clear any old messages
+
+        // --- Step 4: Package the data and send it to Google Sheets ---
+        const formData = { usn, name, email, cell, seminar, area, apiKey: API_KEY };
+
+        fetch(SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors", // Required for Google Apps Script
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+        })
+        .then(function() {
+            // "no-cors" means we can't read the response, but if we reach
+            // here without an error, the submission went through! ✅
+            showStatus("✅ Registration submitted successfully!", "success");
+            clearForm();
+            loadData(); // Automatically refresh the table below
+        })
+        .catch(function(error) {
+            showStatus("❌ Something went wrong. Please try again.", "error");
+            console.error("Submission error:", error);
+        })
+        .finally(function() {
+            // Re-enable the button no matter what happened
+            btn.disabled = false;
+            btn.textContent = "Submit Registration";
+        });
+    }
+
+
+    // ============================================================
+    //  LOAD DATA — Reads from Google Sheets and fills the table
+    // ============================================================
+    function loadData() {
+        const tbody = document.getElementById("table-body");
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Loading data...</td></tr>`;
+
+        fetch(SCRIPT_URL + "?apiKey=" + API_KEY)
+            .then(function(response) {
+                return response.json(); // Convert the response to usable data
+            })
+            .then(function(result) {
+
+                // If no rows exist yet, show a friendly message
+                if (!result.data || result.data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No registrations yet. Be the first!</td></tr>`;
+                    return;
+                }
+
+                // Build the table rows from the sheet data
+                tbody.innerHTML = result.data.map(function(row, index) {
+                    return `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${row.USN   || ""}</td>
+                            <td>${row.Name  || ""}</td>
+                            <td>${row.Email || ""}</td>
+                            <td>${row.Cell  || ""}</td>
+                            <td>${row.Seminar || ""}</td>
+                            <td>${row.Area  || ""}</td>
+                        </tr>
+                    `;
+                }).join("");
+            })
+            .catch(function(error) {
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">❌ Could not load data. Try refreshing.</td></tr>`;
+                console.error("Load error:", error);
+            });
+    }
+
+
+    // ============================================================
+    //  HELPER FUNCTIONS
+    // ============================================================
+
+    // Shows a success (green) or error (red) message below the form title
+    function showStatus(message, type) {
+        const box = document.getElementById("status-message");
+        box.textContent = message;
+        box.className = type; // Applies the CSS class "success" or "error"
+    }
+
+    // Clears all form fields after a successful submission
+    function clearForm() {
+        document.getElementById("usn").value     = "";
+        document.getElementById("name").value    = "";
+        document.getElementById("email").value   = "";
+        document.getElementById("cell").value    = "";
+        document.getElementById("seminar").value = "";
+        const checked = document.querySelector('input[name="area"]:checked');
+        if (checked) checked.checked = false;
+    }
+
+
+    // ============================================================
+    //  AUTO-LOAD — Load the table as soon as the page opens
+    // ============================================================
+    window.onload = function() {
+        loadData();
+    };
+
+</script>
+
+</body>
+</html>
